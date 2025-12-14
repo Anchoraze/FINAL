@@ -71,30 +71,25 @@ function updatePlaylistUI() {
 
 /* ------------------ Play Music ------------------ */
 function playMusic(track, pause=false) {
-    if(!track) return;
+    if (!track) return;
 
     currentSong.src = `songs/${currFolder}/${encodeURIComponent(track)}`;
+    currentSong.load(); // ✅ THIS IS THE FIX
+
+    document.querySelector(".songinfo").innerText = getOnlyName(track);
+    document.querySelector(".songtime").innerText = "00:00 / 00:00";
+    document.querySelector(".circle").style.left = "0%";
 
     if (!pause) {
         currentSong.play();
         play.src = "img/pause.svg";
+    } else {
+        play.src = "img/play.svg";
     }
 
-    document.querySelector(".songinfo").innerText = getOnlyName(track);
-    document.querySelector(".songtime").innerText = "00:00 / 00:00";
-
-    // Highlight current song
     highlightCurrentSong();
 }
 
-/* ------------------ Highlight Playing Song ------------------ */
-function highlightCurrentSong() {
-    const lis = document.querySelectorAll(".songList li");
-    lis.forEach((li, i) => {
-        if(i === currentIndex) li.classList.add("playing");
-        else li.classList.remove("playing");
-    });
-}
 
 /* ------------------ Animate Circle ------------------ */
 function animateCircle() {
