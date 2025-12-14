@@ -1,12 +1,12 @@
 console.log("Lets Write JS");
 
-/* ------------------ GLOBALS ------------------ */
+/* ================== GLOBAL STATE ================== */
 let currentSong = new Audio();
 let songs = [];
 let currFolder = "";
 let currentIndex = 0;
 
-/* ------------------ UTILS ------------------ */
+/* ================== UTILS ================== */
 function getOnlyName(path) {
     return path.split(/[/\\]/).pop();
 }
@@ -19,7 +19,7 @@ function formatTime(seconds) {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-/* ------------------ LOAD SONGS ------------------ */
+/* ================== LOAD SONGS FROM JSON ================== */
 async function loadSongs(folder) {
     currFolder = folder;
 
@@ -31,51 +31,54 @@ async function loadSongs(folder) {
         console.log("FOUND SONGS:", songs);
 
         currentIndex = 0;
-        updatePlaylistUI();
+        renderPlaylist();
 
         if (songs.length > 0) {
             playMusic(songs[0], true);
         }
 
     } catch (err) {
-        console.error("Failed to load songs:", err);
-        songs = [];
+        console.error("Song loading failed", err);
         document.querySelector(".songList ul").innerHTML = "";
     }
 }
 
-/* ------------------ PLAYLIST UI ------------------ */
-function updatePlaylistUI() {
+/* ================== RENDER PLAYLIST ================== */
+function renderPlaylist() {
     const ul = document.querySelector(".songList ul");
     ul.innerHTML = "";
 
     songs.forEach((song, i) => {
-        ul.innerHTML += `
-        <li>
-            <img class="invert" src="img/music.svg">
+        const li = document.createElement("li");
+
+        li.innerHTML = `
+            <img class="invert" src="img/music.svg" />
             <div class="info">
                 <div>${getOnlyName(song)}</div>
             </div>
             <div class="playnow">
                 <div>Play Now</div>
-                <img class="invert" src="img/play.svg">
+                <img class="invert" src="img/play.svg" />
             </div>
-        </li>`;
-    });
+        `;
 
-    Array.from(ul.children).forEach((li, i) => {
         li.addEventListener("click", () => {
             currentIndex = i;
             playMusic(songs[currentIndex]);
         });
+
+        ul.appendChild(li);
     });
+
+    highlightCurrent();
 }
 
-/* ------------------ PLAY MUSIC ------------------ */
+/* ================== PLAY MUSIC ================== */
 function playMusic(track, pause = false) {
     if (!track) return;
 
     currentSong.src = `songs/${currFolder}/${encodeURIComponent(track)}`;
+    currentSong.load(); // 🔥 REQUIRED FOR MOBILE
 
     document.querySelector(".songinfo").innerText = getOnlyName(track);
     document.querySelector(".songtime").innerText = "00:00 / 00:00";
@@ -88,37 +91,46 @@ function playMusic(track, pause = false) {
         play.src = "img/play.svg";
     }
 
-    highlightCurrentSong();
+    highlightCurrent();
 }
 
-/* ------------------ HIGHLIGHT SONG ------------------ */
-function highlightCurrentSong() {
-    document.querySelectorAll(".songList li").forEach((li, i) => {
-        li.classList.toggle("playing", i === currentIndex);
+/* ================== HIGHLIGHT CURRENT SONG ================== */
+function highlightCurrent() {
+    const lis = document.querySelectorAll(".songList li");
+    lis.forEach((li, i) => {
+        li.style.background = i === currentIndex ? "#333" : "";
     });
 }
 
-/* ------------------ SEEK BAR ANIMATION ------------------ */
+/* ================== ANIMATE SEEK CIRCLE ================== */
 function animateCircle() {
-    if (!currentSong.paused && !isNaN(currentSong.duration)) {
-        const percent = (currentSong.currentTime / currentSong.duration) * 100;
+    if (
+        !currentSong.paused &&
+        currentSong.duration &&
+        !isNaN(currentSong.duration)
+    ) {
+        const percent =
+            (currentSong.currentTime / currentSong.duration) * 100;
         document.querySelector(".circle").style.left = percent + "%";
     }
     requestAnimationFrame(animateCircle);
 }
 
-/* ------------------ MAIN ------------------ */
+/* ================== MAIN ================== */
 async function main() {
 
-    /* Card click → load folder */
-    Array.from(document.getElementsByClassName("card")).forEach(card => {
-        card.addEventListener("click", async e => {
-            const folder = e.currentTarget.dataset.folder;
-            await loadSongs(folder);
+    /* ---- CARD CLICK (LOAD FOLDER) ---- */
+    document.querySelectorAll(".card").forEach(card => {
+        card.addEventListener("click", async () => {
+            const folder = card.dataset.folder;
+            if (folder) await loadSongs(folder);
         });
     });
 
-    /* Play / Pause */
+    /* ---- DEFAULT PLAYLIST (IMPORTANT) ---- */
+    await loadSongs("valo"); // 🔥 DO NOT REMOVE
+
+    /* ---- PLAY / PAUSE ---- */
     play.addEventListener("click", () => {
         if (currentSong.paused) {
             currentSong.play();
@@ -129,15 +141,7 @@ async function main() {
         }
     });
 
-    /* Previous */
-    previous.addEventListener("click", () => {
-        if (currentIndex > 0) {
-            currentIndex--;
-            playMusic(songs[currentIndex]);
-        }
-    });
-
-    /* Next */
+    /* ---- NEXT ---- */
     next.addEventListener("click", () => {
         if (currentIndex < songs.length - 1) {
             currentIndex++;
@@ -145,39 +149,47 @@ async function main() {
         }
     });
 
-    /* Volume */
+    /* ---- PREVIOUS ---- */
+    previous.addEventListener("click", () => {
+        if (currentIndex > 0) {
+            currentIndex--;
+            playMusic(songs[currentIndex]);
+        }
+    });
+
+    /* ---- TIME UPDATE ---- */
+    currentSong.addEventListener("timeupdate", () => {
+        document.querySelector(".songtime").innerText =
+            `${formatTime(currentSong.currentTime)} / ${formatTime(currentSong.duration)}`;
+    });
+
+    /* ---- AUTO NEXT ---- */
+    currentSong.addEventListener("ended", () => {
+        if (currentIndex < songs.length - 1) {
+            currentIndex++;
+            playMusic(songs[currentIndex]);
+        }
+    });
+
+    /* ---- SEEK ---- */
+    document.querySelector(".seekbar").addEventListener("click", e => {
+        const width = e.target.getBoundingClientRect().width;
+        const percent = e.offsetX / width;
+        currentSong.currentTime = percent * currentSong.duration;
+    });
+
+    /* ---- VOLUME ---- */
     document.querySelector(".range input").addEventListener("input", e => {
         currentSong.volume = e.target.value / 100;
     });
 
-    /* Seekbar */
-    document.querySelector(".seekbar").addEventListener("click", e => {
-        if (isNaN(currentSong.duration)) return;
-        const percent = e.offsetX / e.target.getBoundingClientRect().width;
-        currentSong.currentTime = currentSong.duration * percent;
-    });
-
-    /* Hamburger */
+    /* ---- HAMBURGER ---- */
     document.querySelector(".hamburger").addEventListener("click", () => {
         document.querySelector(".left").style.left = "0";
     });
 
     document.querySelector(".close").addEventListener("click", () => {
         document.querySelector(".left").style.left = "-200%";
-    });
-
-    /* Time Update */
-    currentSong.addEventListener("timeupdate", () => {
-        document.querySelector(".songtime").innerText =
-            `${formatTime(currentSong.currentTime)} / ${formatTime(currentSong.duration)}`;
-    });
-
-    /* Auto next */
-    currentSong.addEventListener("ended", () => {
-        if (currentIndex < songs.length - 1) {
-            currentIndex++;
-            playMusic(songs[currentIndex]);
-        }
     });
 
     requestAnimationFrame(animateCircle);
