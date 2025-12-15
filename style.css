@@ -316,6 +316,8 @@ padding-top: 10px;
 
 @media (max-width:1300px) {
 
+
+
     .left{
         position: absolute;
         left: -200%;
@@ -358,7 +360,11 @@ padding-top: 10px;
 
     .card-container{
         margin: 0;
-        justify-content: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        padding-bottom: 23vh;
+        
+
     }
 
     .abovebar{
@@ -373,6 +379,7 @@ padding-top: 10px;
     }
     .spotifyPlaylist h1{
     padding:10px 0px;
+    }
 
     .songinfo{
         width:auto;
@@ -382,12 +389,14 @@ padding-top: 10px;
     }
     .timevol{
         display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        gap: 10px;
+        gap: 20px;
+    }
+    .volume{
+        padding-left: 44px;
+        padding-right: 0;
+
+
     }
 
 
-}
 }
